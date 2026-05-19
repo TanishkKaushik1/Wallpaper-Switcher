@@ -22,6 +22,10 @@ QtObject {
     readonly property string workshopRoot:
         "/home/tanishk/.local/share/Steam/steamapps/workshop/content/431960"
 
+    // Your niri output name — run `niri msg outputs` in terminal to find yours.
+    // Common values: eDP-1, DP-1, HDMI-A-1
+    property string screenOutput: "eDP-1"
+
     // ── Internal ─────────────────────────────────────────────────────────
     property var _pendingIds: []
     property int _scanIndex: 0
@@ -152,12 +156,16 @@ QtObject {
         stderr: SplitParser { onRead: function(line) { killProcess._buffer += line } }
 
         onExited: function(code, _) {
-            // After kill attempt completes, start the apply process
-            var wp = killProcess._requestedWallpaperPath
-            if (!wp) wp = ""
-            // Prefer local build, fall back to PATH `linux-wallpaperengine`
-                var cmd = "if [ -x \"" + lweBinary + "\" ]; then \"" + lweBinary + "\" --bg \"" + wp + "\" >/dev/null 2>&1 &\n"
-                    + "elif command -v linux-wallpaperengine >/dev/null 2>&1; then linux-wallpaperengine --bg \"" + wp + "\" >/dev/null 2>&1 &\n"
+            // After kill attempt completes, start the apply process.
+            // Correct syntax: --screen-root <output> --bg <id_or_path>
+            // Run `niri msg outputs` to find your output name and set screenOutput above.
+            var wp  = killProcess._requestedWallpaperPath
+            var scr = root.screenOutput
+            if (!wp)  wp  = ""
+            if (!scr) scr = "eDP-1"
+            var lwe = lweBinary
+            var cmd = "if [ -x \"" + lwe + "\" ]; then \"" + lwe + "\" --screen-root " + scr + " --bg \"" + wp + "\" >/dev/null 2>&1 &\n"
+                    + "elif command -v linux-wallpaperengine >/dev/null 2>&1; then linux-wallpaperengine --screen-root " + scr + " --bg \"" + wp + "\" >/dev/null 2>&1 &\n"
                     + "else echo 'lwe-missing'; exit 2; fi"
             applyProcess._buffer = ""
             applyProcess.command = ["bash", "-c", cmd]
