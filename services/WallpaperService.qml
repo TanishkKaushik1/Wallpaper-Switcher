@@ -158,9 +158,10 @@ QtObject {
 
         // Kill any previously running lwe instance first, then start new one.
         // lwe takes the folder path via --bg flag.
+        // If the binary isn't present or executable, return an error quickly.
         applyProcess.command = ["bash", "-c",
-            "pkill -f linux-wallpaperengine 2>/dev/null; sleep 0.3; \"" +
-            lweBinary + "\" --bg \"" + wallpaperPath + "\" &"
+            "if [ -x \"" + lweBinary + "\" ]; then \"" + lweBinary + "\" -v >/dev/null 2>&1 || true; pkill -f linux-wallpaperengine 2>/dev/null; sleep 0.3; \"" +
+            lweBinary + "\" --bg \"" + wallpaperPath + "\" & else echo 'lwe-missing' >&2; exit 2; fi"
         ]
         applyProcess.running = true
     }
