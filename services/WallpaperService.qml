@@ -62,7 +62,9 @@ QtObject {
         property string _currentId: ""
         property string _currentPath: ""
 
-        onStarted: _buffer = ""
+        onStarted: {
+            _buffer = ""
+        }
 
         stdout: SplitParser {
             onRead: function(line) { catProcess._buffer += line + "\n" }
@@ -118,16 +120,48 @@ QtObject {
         stdout: SplitParser {
             onRead: function(line) { applyProcess._buffer += line }
         }
+        stderr: SplitParser {
+            onRead: function(line) { applyProcess._buffer += line }
+        }
 
         onExited: function(code, _) {
             root.isApplying = false
+            console.log("applyProcess: exited code", code, "output:", applyProcess._buffer)
             if (code === 0) {
                 root.statusMessage = "Wallpaper applied"
+                statusClearTimer.restart()
+            } else if (applyProcess._buffer.indexOf('lwe-missing') !== -1) {
+                root.statusMessage = "Error: linux-wallpaperengine missing"
                 statusClearTimer.restart()
             } else {
                 root.statusMessage = "Error (code " + code + ")"
                 statusClearTimer.restart()
             }
+        }
+    }
+
+    // Process: helper to kill existing lwe instances (runs before applyProcess)
+    property var _killProcess: Process {
+        id: killProcess
+        property string _buffer: ""
+        property string _requestedWallpaperPath: ""
+
+        onStarted: _buffer = ""
+
+        stdout: SplitParser { onRead: function(line) { killProcess._buffer += line } }
+        stderr: SplitParser { onRead: function(line) { killProcess._buffer += line } }
+
+        onExited: function(code, _) {
+            // After kill attempt completes, start the apply process
+            var wp = killProcess._requestedWallpaperPath
+            if (!wp) wp = ""
+            // Prefer local build, fall back to PATH `linux-wallpaperengine`
+                var cmd = "if [ -x \"" + lweBinary + "\" ]; then \"" + lweBinary + "\" --bg \"" + wp + "\" >/dev/null 2>&1 &\n"
+                    + "elif command -v linux-wallpaperengine >/dev/null 2>&1; then linux-wallpaperengine --bg \"" + wp + "\" >/dev/null 2>&1 &\n"
+                    + "else echo 'lwe-missing'; exit 2; fi"
+            applyProcess._buffer = ""
+            applyProcess.command = ["bash", "-c", cmd]
+            applyProcess.running = true
         }
     }
 
@@ -150,6 +184,7 @@ QtObject {
     }
 
     function applyWallpaper(workshopId, wallpaperPath) {
+        console.log("WallpaperService: applyWallpaper called ->", workshopId, wallpaperPath)
         if (isApplying) return
 
         isApplying = true
@@ -158,12 +193,12 @@ QtObject {
 
         // Kill any previously running lwe instance first, then start new one.
         // lwe takes the folder path via --bg flag.
-        // If the binary isn't present or executable, return an error quickly.
-        applyProcess.command = ["bash", "-c",
-            "if [ -x \"" + lweBinary + "\" ]; then \"" + lweBinary + "\" -v >/dev/null 2>&1 || true; pkill -f linux-wallpaperengine 2>/dev/null; sleep 0.3; \"" +
-            lweBinary + "\" --bg \"" + wallpaperPath + "\" & else echo 'lwe-missing' >&2; exit 2; fi"
-        ]
-        applyProcess.running = true
+        // We run pkill in a separate Process to avoid killing the shell that launches the new instance.
+        killProcess._buffer = ""
+        killProcess._requestedWallpaperPath = wallpaperPath
+        // Use a bracketed pattern so the pkill command doesn't match itself
+        killProcess.command = ["bash", "-lc", "pkill -f \"[l]inux-wallpaperengine\" 2>/dev/null || true; sleep 0.3"]
+        killProcess.running = true
     }
 
     // ── Internal helpers ──────────────────────────────────────────────────

@@ -25,6 +25,14 @@ Rectangle {
 
     // ── Hover handler ─────────────────────────────────────────────────────
     HoverHandler { id: cardHover }
+    
+        // Allow clicking the whole card to apply the wallpaper
+        TapHandler {
+            onTapped: {
+                console.log("WallpaperCard: card tapped ->", card.workshopId, card.folderPath)
+                card.applyRequested(card.workshopId, card.folderPath)
+            }
+        }
 
     // ── Preview image ─────────────────────────────────────────────────────
     Rectangle {
@@ -143,7 +151,10 @@ Rectangle {
 
             HoverHandler { id: applyHover }
             TapHandler {
-                onTapped: card.applyRequested(card.workshopId, card.folderPath)
+                onTapped: {
+                    console.log("WallpaperCard: apply tapped ->", card.workshopId, card.folderPath)
+                    card.applyRequested(card.workshopId, card.folderPath)
+                }
             }
         }
     }
