@@ -57,6 +57,9 @@ FloatingWindow {
         id: wallpaperService
     }
 
+    // ── Tab state ─────────────────────────────────────────────────────────
+    property int activeTab: 0   // 0 = Library, 1 = Workshop
+
     ColumnLayout {
         anchors.fill: parent
         anchors.margins: 0
@@ -182,7 +185,7 @@ FloatingWindow {
             }
         }
 
-        // ── Toolbar: Search + Refresh ───────────────────────────────────────
+        // ── Tab bar + contextual toolbar ───────────────────────────────────
         Rectangle {
             Layout.fillWidth: true
             height: 56
@@ -200,14 +203,123 @@ FloatingWindow {
                 anchors.rightMargin: 24
                 spacing: 12
 
+                // ── Tab buttons ───────────────────────────────────────────
+                Row {
+                    spacing: 4
+
+                    // LIBRARY tab
+                    Rectangle {
+                        property bool active: root.activeTab === 0
+                        width: libTabLabel.width + 28
+                        height: 34
+                        radius: 7
+                        color: active
+                            ? "#1a2035"
+                            : (libTabH.containsMouse ? "#13151f" : "transparent")
+                        border.color: active ? "#2a4aaa" : "transparent"
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 7
+                            Text {
+                                text: "◧"
+                                color: parent.parent.active ? "#4a8aff" : (libTabH.containsMouse ? "#3a5a7a" : "#333a4a")
+                                font.pixelSize: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                            Text {
+                                id: libTabLabel
+                                text: "LIBRARY"
+                                color: parent.parent.active ? "#6a9aff" : (libTabH.containsMouse ? "#3a5a7a" : "#333a4a")
+                                font.pixelSize: 10
+                                font.family: "monospace"
+                                font.letterSpacing: 1.8
+                                font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                        }
+
+                        HoverHandler { id: libTabH }
+                        TapHandler { onTapped: root.activeTab = 0 }
+                    }
+
+                    // WORKSHOP tab
+                    Rectangle {
+                        property bool active: root.activeTab === 1
+                        width: wsTabLabel.width + 28
+                        height: 34
+                        radius: 7
+                        color: active
+                            ? "#1a2a1a"
+                            : (wsTabH.containsMouse ? "#13191a" : "transparent")
+                        border.color: active ? "#2a6a3a" : "transparent"
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: 150 } }
+                        Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                        Row {
+                            anchors.centerIn: parent
+                            spacing: 7
+                            Text {
+                                text: "⬡"
+                                color: parent.parent.active ? "#44cc77" : (wsTabH.containsMouse ? "#2a5a3a" : "#2a3a2a")
+                                font.pixelSize: 12
+                                anchors.verticalCenter: parent.verticalCenter
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                            Text {
+                                id: wsTabLabel
+                                text: "WORKSHOP"
+                                color: parent.parent.active ? "#44cc77" : (wsTabH.containsMouse ? "#2a5a3a" : "#2a3a2a")
+                                font.pixelSize: 10
+                                font.family: "monospace"
+                                font.letterSpacing: 1.8
+                                font.weight: Font.Bold
+                                anchors.verticalCenter: parent.verticalCenter
+                                Behavior on color { ColorAnimation { duration: 150 } }
+                            }
+                        }
+
+                        HoverHandler { id: wsTabH }
+                        TapHandler { onTapped: root.activeTab = 1 }
+                    }
+                }
+
+                // Vertical divider
+                Rectangle {
+                    width: 1; height: 24
+                    color: "#1e2228"
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                // ── Library toolbar (search + refresh) — only on tab 0 ────
                 SearchBar {
                     id: searchBar
                     Layout.fillWidth: true
+                    visible: root.activeTab === 0
                     onTextChanged: wallpaperGrid.filterText = text
                 }
 
-                // Refresh button
+                // Workshop search hint — only on tab 1
+                Text {
+                    visible: root.activeTab === 1
+                    Layout.fillWidth: true
+                    text: "Browse, search and download wallpapers from the Steam Workshop"
+                    color: "#2a3a2a"
+                    font.pixelSize: 10
+                    font.family: "monospace"
+                    font.letterSpacing: 0.4
+                    elide: Text.ElideRight
+                }
+
+                // Refresh button — only on tab 0
                 Rectangle {
+                    visible: root.activeTab === 0
                     width: 100; height: 34
                     radius: 6
                     color: refreshHover.containsMouse ? "#1a2a4a" : "#13151a"
@@ -255,18 +367,71 @@ FloatingWindow {
                     Behavior on color { ColorAnimation { duration: 150 } }
                     Behavior on border.color { ColorAnimation { duration: 150 } }
                 }
+
+                // After-download refresh hint on workshop tab
+                Rectangle {
+                    visible: root.activeTab === 1
+                    width: 130; height: 34
+                    radius: 6
+                    color: postDlH.containsMouse ? "#1a2a4a" : "#13151a"
+                    border.color: postDlH.containsMouse ? "#1a6aff" : "#22262f"
+                    border.width: 1
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+
+                    Row {
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text {
+                            text: "⟳"
+                            color: postDlH.containsMouse ? "#4a8aff" : "#555"
+                            font.pixelSize: 14
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            text: "REFRESH LIBRARY"
+                            color: postDlH.containsMouse ? "#4a8aff" : "#555"
+                            font.pixelSize: 9
+                            font.letterSpacing: 1.2
+                            font.family: "monospace"
+                            font.weight: Font.Bold
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    HoverHandler { id: postDlH }
+                    TapHandler {
+                        onTapped: {
+                            wallpaperService.scanWallpapers()
+                            root.activeTab = 0
+                        }
+                    }
+                }
             }
         }
 
-        // ── Main Content ───────────────────────────────────────────────────
-        WallpaperGrid {
-            id: wallpaperGrid
+        // ── Main Content area ──────────────────────────────────────────────
+        Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
-            model: wallpaperService.wallpapers
 
-            onApplyRequested: function(workshopId, wallpaperPath) {
-                wallpaperService.applyWallpaper(workshopId, wallpaperPath)
+            // Tab 0: Library grid
+            WallpaperGrid {
+                id: wallpaperGrid
+                anchors.fill: parent
+                visible: root.activeTab === 0
+                model: wallpaperService.wallpapers
+
+                onApplyRequested: function(workshopId, wallpaperPath) {
+                    wallpaperService.applyWallpaper(workshopId, wallpaperPath)
+                }
+            }
+
+            // Tab 1: Workshop browser
+            WorkshopBrowser {
+                anchors.fill: parent
+                visible: root.activeTab === 1
+                workshopRoot: wallpaperService.workshopRoot
             }
         }
     }
