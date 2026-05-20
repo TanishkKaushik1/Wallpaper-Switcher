@@ -16,8 +16,7 @@ QtObject {
     // ── Paths ────────────────────────────────────────────────────────────
     // Binary for linux-wallpaperengine
     readonly property string lweBinary:
-        "/home/tanishk/.config/niri-rice/linux-wallpaperengine/build/output/linux-wallpaperengine"
-
+    "/usr/bin/linux-wallpaperengine"
     // Steam Workshop content root
     readonly property string workshopRoot:
         "/home/tanishk/.local/share/Steam/steamapps/workshop/content/431960"
@@ -181,20 +180,18 @@ QtObject {
             // --bg accepts the full folder path OR a workshop ID — we use the full path.
             // We redirect stdout/stderr to /tmp/lwe.log so errors are visible for debugging
             // without breaking the backgrounded process exit code.
-            var flags = "--assets-dir \"" + adir + "\" --screen-root " + scr + " --verbose --bg \"" + wp + "\""
-
-            // Verify assets dir exists before launching, so we get a clear error message.
-            var cmd = "if [ ! -x \"" + lwe + "\" ] && ! command -v linux-wallpaperengine >/dev/null 2>&1; then\n"
-                    + "  echo 'lwe-missing'; exit 2\n"
-                    + "fi\n"
-                    + "if [ ! -d \"" + adir + "\" ]; then\n"
-                    + "  echo 'assets-missing'; exit 3\n"
-                    + "fi\n"
-                    + "if [ -x \"" + lwe + "\" ]; then\n"
-                    + "  \"" + lwe + "\" " + flags + " > /tmp/lwe.log 2>&1 &\n"
-                    + "else\n"
-                    + "  linux-wallpaperengine " + flags + " > /tmp/lwe.log 2>&1 &\n"
-                    + "fi"
+var flags = "--assets-dir \"" + adir + "\" --screen-root " + scr + " --mpv-hwdec=nvdec --scaling fill --verbose --bg \"" + wp + "\""            // Verify assets dir exists before launching, so we get a clear error message.
+          var cmd = "if [ ! -x \"" + lwe + "\" ] && ! command -v linux-wallpaperengine >/dev/null 2>&1; then\n"
+        + "  echo 'lwe-missing'; exit 2\n"
+        + "fi\n"
+        + "if [ ! -d \"" + adir + "\" ]; then\n"
+        + "  echo 'assets-missing'; exit 3\n"
+        + "fi\n"
+        + "if [ -x \"" + lwe + "\" ]; then\n"
+        + "  __GL_THREADED_OPTIMIZATIONS=0 __GL_YIELD=USLEEP \"" + lwe + "\" " + flags + " > /tmp/lwe.log 2>&1 &\n"
+        + "else\n"
+        + "  __GL_THREADED_OPTIMIZATIONS=0 __GL_YIELD=USLEEP linux-wallpaperengine " + flags + " > /tmp/lwe.log 2>&1 &\n"
+        + "fi"
 
             applyProcess._buffer = ""
             applyProcess.command = ["bash", "-c", cmd]
@@ -232,7 +229,7 @@ QtObject {
         // sleep 0.5 gives the GPU/Wayland layer-shell time to release before lwe restarts.
         killProcess._buffer = ""
         killProcess._requestedWallpaperPath = wallpaperPath
-        killProcess.command = ["bash", "-lc", "pkill -f \"[l]inux-wallpaperengine\" 2>/dev/null || true; sleep 0.5"]
+        killProcess.command = ["bash", "-lc", "pkill -f \"[l]inux-wallpaperengine\" 2>/dev/null || true; sleep 1"]
         killProcess.running = true
     }
 
