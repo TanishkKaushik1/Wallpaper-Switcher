@@ -368,6 +368,42 @@ FloatingWindow {
                     Behavior on border.color { ColorAnimation { duration: 150 } }
                 }
 
+                // Show Hidden button — only on tab 0, only when items are hidden
+                Rectangle {
+                    visible: root.activeTab === 0 && wallpaperGrid.hiddenIds.length > 0
+                    width: hiddenBtnRow.width + 20; height: 34
+                    radius: 6
+                    color: hiddenBtnH.containsMouse ? "#1a1e2a" : "#13151a"
+                    border.color: hiddenBtnH.containsMouse ? "#3a5a8a" : "#22262f"
+                    border.width: 1
+                    Behavior on color       { ColorAnimation { duration: 150 } }
+                    Behavior on border.color{ ColorAnimation { duration: 150 } }
+
+                    Row {
+                        id: hiddenBtnRow
+                        anchors.centerIn: parent
+                        spacing: 6
+                        Text {
+                            text: "◌"
+                            color: hiddenBtnH.containsMouse ? "#6a9aff" : "#445566"
+                            font.pixelSize: 13
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                        Text {
+                            text: wallpaperGrid.hiddenIds.length + " HIDDEN"
+                            color: hiddenBtnH.containsMouse ? "#6a9aff" : "#445566"
+                            font.pixelSize: 10
+                            font.letterSpacing: 1.5
+                            font.family: "monospace"
+                            font.weight: Font.Bold
+                            anchors.verticalCenter: parent.verticalCenter
+                        }
+                    }
+
+                    HoverHandler { id: hiddenBtnH }
+                    TapHandler { onTapped: wallpaperGrid.showHidden() }
+                }
+
                 // After-download refresh hint on workshop tab
                 Rectangle {
                     visible: root.activeTab === 1

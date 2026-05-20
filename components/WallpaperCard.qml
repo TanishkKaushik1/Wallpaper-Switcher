@@ -12,7 +12,8 @@ Rectangle {
     property string folderPath:    ""
 
     signal applyRequested(string workshopId, string wallpaperPath)
-    signal hideRequested(string workshopId)   // ← new: parent removes from grid
+    signal hideRequested(string workshopId)
+    signal deleteRequested(string workshopId, string folderPath)
 
     radius: 10
     color:        cardHover.containsMouse ? "#16191f" : "#12141a"
@@ -25,9 +26,58 @@ Rectangle {
     HoverHandler { id: cardHover }
 
     TapHandler {
+        acceptedButtons: Qt.LeftButton
         onTapped: {
             console.log("WallpaperCard: card tapped ->", card.workshopId, card.folderPath)
             card.applyRequested(card.workshopId, card.folderPath)
+        }
+    }
+
+    // Right-click context menu
+    TapHandler {
+        acceptedButtons: Qt.RightButton
+        onTapped: contextMenu.popup()
+    }
+
+    Menu {
+        id: contextMenu
+        background: Rectangle {
+            color: "#13161e"
+            border.color: "#1e2535"
+            border.width: 1
+            radius: 8
+        }
+
+        MenuItem {
+            text: "Hide"
+            contentItem: Row {
+                spacing: 10
+                Text { text: "◌"; color: "#7a8aaa"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Hide"; color: "#c0c8e0"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            }
+            background: Rectangle {
+                color: parent.highlighted ? "#1e2535" : "transparent"
+                radius: 6
+            }
+            onTriggered: card.hideRequested(card.workshopId)
+        }
+
+        MenuSeparator {
+            contentItem: Rectangle { height: 1; color: "#1e2535" }
+        }
+
+        MenuItem {
+            text: "Delete"
+            contentItem: Row {
+                spacing: 10
+                Text { text: "✕"; color: "#ff4444"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                Text { text: "Delete from disk"; color: "#ff6666"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            }
+            background: Rectangle {
+                color: parent.highlighted ? "#2a1a1a" : "transparent"
+                radius: 6
+            }
+            onTriggered: card.deleteRequested(card.workshopId, card.folderPath)
         }
     }
 
@@ -106,33 +156,7 @@ Rectangle {
             TapHandler   { onTapped: card.applyRequested(card.workshopId, card.folderPath) }
         }
 
-        // ── HIDE button (top-left, shows on hover) ─────────────────────────
-        Rectangle {
-            anchors.top: parent.top; anchors.left: parent.left; anchors.margins: 6
-            width: 26; height: 26; radius: 13
-            color: hideHover.containsMouse ? "#aa3333" : "#661a1a"
-            opacity: cardHover.containsMouse ? 1.0 : 0.0
-            visible: opacity > 0
-            z: 10
-            Behavior on opacity { NumberAnimation { duration: 180 } }
-            Behavior on color   { ColorAnimation  { duration: 120 } }
-
-            Text {
-                anchors.centerIn: parent; text: "✕"
-                color: "#ffffff"; font.pixelSize: 10; font.weight: Font.Bold
-            }
-
-            HoverHandler { id: hideHover }
-            MouseArea {
-                anchors.fill: parent
-                hoverEnabled: true
-                cursorShape: Qt.PointingHandCursor
-                onClicked: {
-                    console.log("Hiding wallpaper:", card.workshopId)
-                    card.hideRequested(card.workshopId)
-                }
-            }
-        }
+    
     }
 
     // ── Bottom info strip ──────────────────────────────────────────────────
