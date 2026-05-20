@@ -44,14 +44,16 @@ Rectangle {
         color: "#0a0c10"
         radius: 8
 
-        // Actual preview image
-        Image {
+        // Actual preview — AnimatedImage handles both static images and GIFs
+        // (scene-type wallpapers often ship preview.gif; plain Image only shows frame 1)
+        AnimatedImage {
             id: preview
             anchors.fill: parent
             source: card.previewPath !== "" ? ("file://" + card.previewPath) : ""
             fillMode: Image.PreserveAspectCrop
             asynchronous: true
             smooth: true
+            playing: true          // animate GIFs; no-op for static images
             visible: status === Image.Ready
             layer.enabled: true
             // Slight darkening overlay on hover so apply button pops
