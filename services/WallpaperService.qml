@@ -25,6 +25,13 @@ QtObject {
     readonly property string lastWallpaperFile:
         "/home/tanishk/.config/niri-rice/Wallpaper-Switcher/last_wallpaper.json"
 
+    // ── Matugen paths ────────────────────────────────────────────────────
+    readonly property string matugenConfig:
+        "/home/tanishk/.config/niri-rice/matugen/config.toml"
+
+    // Pending wallpaper preview image path for matugen (set just before apply)
+    property string _pendingPreviewPath: ""
+
     property string screenOutput: "eDP-1"
 
     // ── Internal ─────────────────────────────────────────────────────────
@@ -120,20 +127,62 @@ QtObject {
             root.isApplying = false
             if (applyProcess._buffer.indexOf('lwe-missing') !== -1) {
                 root.statusMessage = "Error: linux-wallpaperengine not found"
+                statusClearTimer.restart()
             } else if (applyProcess._buffer.indexOf('assets-missing') !== -1) {
                 root.statusMessage = "Error: WE assets folder not found"
+                statusClearTimer.restart()
             } else if (code === 0) {
-                root.statusMessage = "Wallpaper applied ✓"
+                root.statusMessage = "Wallpaper applied ✓  — generating colors…"
+                // Fire matugen on the preview image if we have one
+                if (root._pendingPreviewPath !== "") {
+                    matugenProcess._buffer = ""
+                    matugenProcess.command = [
+                        "bash", "-c",
+                    "matugen -c \"" + root.matugenConfig + "\" image \"" + root._pendingPreviewPath + "\" 2>&1"
+                    ]
+                    matugenProcess.running = true
+                } else {
+                    root.statusMessage = "Wallpaper applied ✓"
+                    statusClearTimer.restart()
+                }
             } else {
                 root.statusMessage = "Error (" + code + "): " + applyProcess._buffer.substring(0, 60)
+                statusClearTimer.restart()
             }
-            statusClearTimer.restart()
         }
     }
 
     // ── Process: save last wallpaper to disk ─────────────────────────────
     property var _saveProcess: Process {
         id: saveProcess
+    }
+
+    // ── Process: run matugen after wallpaper is applied ───────────────────
+    property var _matugenProcess: Process {
+        id: matugenProcess
+        property string _buffer: ""
+        onStarted: _buffer = ""
+        stdout: SplitParser { onRead: function(line) { matugenProcess._buffer += line + "\n" } }
+        stderr: SplitParser { onRead: function(line) { matugenProcess._buffer += line + "\n" } }
+        onExited: function(code, _) {
+            if (code === 0) {
+                root.statusMessage = "Wallpaper applied ✓  — colors updated ✓"
+                // Reload alacritty if running so it picks up the new colors
+                reloadProcess.command = [
+                    "bash", "-c",
+                    "pkill -USR1 alacritty 2>/dev/null || true"
+                ]
+                reloadProcess.running = true
+            } else {
+                root.statusMessage = "Wallpaper applied ✓  — matugen error: " + matugenProcess._buffer.substring(0, 60)
+            }
+            statusClearTimer.restart()
+        }
+    }
+
+    // ── Process: signal alacritty to reload colors ────────────────────────
+    property var _reloadProcess: Process {
+        id: reloadProcess
     }
 
     function _saveLastWallpaper(workshopId, wallpaperPath) {
@@ -199,11 +248,14 @@ QtObject {
         lsProcess.running = true
     }
 
-    function applyWallpaper(workshopId, wallpaperPath) {
+    function applyWallpaper(workshopId, wallpaperPath, previewPath) {
         if (isApplying) return
         isApplying      = true
         statusMessage   = "Applying…"
         currentWallpaper = workshopId
+
+        // Store preview image path for matugen (may be "" if unknown)
+        _pendingPreviewPath = previewPath !== undefined ? previewPath : ""
 
         // ← Save so restore service can re-apply after reboot
         _saveLastWallpaper(workshopId, wallpaperPath)

@@ -12,8 +12,9 @@ Item {
     property bool   open:                false
     property string targetWallpaperId:   ""
     property string targetWallpaperPath: ""
-
-    signal applyRequested(string workshopId, string wallpaperPath)
+    property string targetWallpaperPreview: ""
+    
+signal applyRequested(string workshopId, string wallpaperPath, string previewPath)
 
     // ── Geometry ──────────────────────────────────────────────────────────
     anchors.fill: parent
@@ -416,7 +417,7 @@ Item {
                         onTapped: {
                             LweSettingsService.save()
                             if (panel.targetWallpaperPath !== "")
-                                panel.applyRequested(panel.targetWallpaperId, panel.targetWallpaperPath)
+                            panel.applyRequested(panel.targetWallpaperId, panel.targetWallpaperPath, panel.targetWallpaperPreview)
                             panel.open = false
                         }
                     }

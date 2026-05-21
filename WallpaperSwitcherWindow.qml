@@ -458,8 +458,8 @@ FloatingWindow {
                 visible: root.activeTab === 0
                 model: wallpaperService.wallpapers
 
-                onApplyRequested: function(workshopId, wallpaperPath) {
-                    wallpaperService.applyWallpaper(workshopId, wallpaperPath)
+                onApplyRequested: function(workshopId, wallpaperPath, previewPath) {
+                    wallpaperService.applyWallpaper(workshopId, wallpaperPath, previewPath)
                 }
 
                 onSettingsRequested: function(workshopId, folderPath) {
@@ -479,8 +479,8 @@ FloatingWindow {
             // Settings panel — floats over everything
             SettingsPanel {
                 id: settingsPanel
-                onApplyRequested: function(id, path) {
-                    wallpaperService.applyWallpaper(id, path)
+                onApplyRequested: function(id, path, previewPath) {
+                    wallpaperService.applyWallpaper(id, path, previewPath)
                 }
             }
         }

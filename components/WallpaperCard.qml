@@ -11,7 +11,7 @@ Rectangle {
     property string previewPath:   ""
     property string folderPath:    ""
 
-    signal applyRequested(string workshopId, string wallpaperPath)
+    signal applyRequested(string workshopId, string wallpaperPath, string previewPath)
     signal hideRequested(string workshopId)
     signal deleteRequested(string workshopId, string folderPath)
     signal settingsRequested(string workshopId, string folderPath)
@@ -30,7 +30,7 @@ Rectangle {
         acceptedButtons: Qt.LeftButton
         onTapped: {
             console.log("WallpaperCard: card tapped ->", card.workshopId, card.folderPath)
-            card.applyRequested(card.workshopId, card.folderPath)
+            card.applyRequested(card.workshopId, card.folderPath, card.previewPath)
         }
     }
 
@@ -188,7 +188,7 @@ Rectangle {
                 Text { text: "APPLY"; color: "#fff"; font.pixelSize: 11; font.letterSpacing: 1.5; font.family: "monospace"; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
             }
             HoverHandler { id: applyHover }
-            TapHandler   { onTapped: card.applyRequested(card.workshopId, card.folderPath) }
+            TapHandler   { onTapped: card.applyRequested(card.workshopId, card.folderPath, card.previewPath) }
         }
 
         // ── SETTINGS gear button ───────────────────────────────────────

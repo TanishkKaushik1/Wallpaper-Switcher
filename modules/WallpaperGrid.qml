@@ -13,8 +13,8 @@ Item {
     property string filterText: ""
     property bool   safeMode:   true    // Auto-hide NSFW content by default
 
-    signal applyRequested(string workshopId, string wallpaperPath)
-    signal settingsRequested(string workshopId, string folderPath)
+    signal applyRequested(string workshopId, string wallpaperPath, string previewPath)
+    signal settingsRequested(string workshopId, string folderPath, string previewPath)
 
     // ── Hidden wallpapers ─────────────────────────────────────────────────
     property var  hiddenIds:      []
@@ -274,10 +274,10 @@ Item {
                     wallpaperType: root.filteredItems[index].wallpaperType
                     previewPath:   root.filteredItems[index].previewPath
                     folderPath:    root.filteredItems[index].folderPath
-                    onApplyRequested:  function(wid, wpath) { root.applyRequested(wid, wpath) }
-                    onSettingsRequested: function(wid, fpath) { root.settingsRequested(wid, fpath) }
-                    onHideRequested:   function(wid) { root.hideWallpaper(wid) }
-                    onDeleteRequested: function(wid, fpath) { root.requestDelete(wid, fpath) }
+                    onApplyRequested:    function(wid, wpath, wpreview) { root.applyRequested(wid, wpath, wpreview) }
+                    onSettingsRequested: function(wid, fpath, wpreview) { root.settingsRequested(wid, fpath, wpreview) }
+                    onHideRequested:     function(wid) { root.hideWallpaper(wid) }
+                    onDeleteRequested:   function(wid, fpath) { root.requestDelete(wid, fpath) }
                 }
             }
         }
@@ -407,8 +407,8 @@ Item {
                             wallpaperType: hiddenGrid.hiddenItems[index].wallpaperType
                             previewPath:   hiddenGrid.hiddenItems[index].previewPath
                             folderPath:    hiddenGrid.hiddenItems[index].folderPath
-                            onApplyRequested:  function(wid, wpath) { root.applyRequested(wid, wpath) }
-                            onSettingsRequested: function(wid, fpath) { root.settingsRequested(wid, fpath) }
+                            onApplyRequested:    function(wid, wpath, wpreview) { root.applyRequested(wid, wpath, wpreview) }
+                            onSettingsRequested: function(wid, fpath, wpreview) { root.settingsRequested(wid, fpath, wpreview) }
                             onHideRequested:   function(wid) {
                                 var savedY = hiddenGrid.contentY;
                                 var savedGridY = grid.contentY;
@@ -433,14 +433,10 @@ Item {
                             HoverHandler { id: unhideHov }
                             TapHandler {
                                 onTapped: {
-                                    // Save scroll state before removing from hidden list
                                     var savedY = hiddenGrid.contentY;
                                     var savedGridY = grid.contentY;
-                                    
                                     var wid = hiddenGrid.hiddenItems[index].workshopId
                                     root.hiddenIds = root.hiddenIds.filter(function(id) { return id !== wid })
-                                    
-                                    // Restore scroll state immediately
                                     hiddenGrid.contentY = savedY;
                                     grid.contentY = savedGridY;
                                     Qt.callLater(function() { 
