@@ -5,5 +5,7 @@ import Quickshell
 
 // Run with: qs -p ~/.config/niri-rice/Wallpaper-Switcher/
 ShellRoot {
+    Component.onCompleted: LweSettingsService.load()
+
     WallpaperSwitcherWindow {}
 }

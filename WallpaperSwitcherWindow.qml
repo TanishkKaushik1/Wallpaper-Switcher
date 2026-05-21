@@ -446,7 +446,7 @@ FloatingWindow {
             }
         }
 
-        // ── Main Content area ──────────────────────────────────────────────
+      // ── Main Content area ──────────────────────────────────────────────
         Item {
             Layout.fillWidth: true
             Layout.fillHeight: true
@@ -461,6 +461,12 @@ FloatingWindow {
                 onApplyRequested: function(workshopId, wallpaperPath) {
                     wallpaperService.applyWallpaper(workshopId, wallpaperPath)
                 }
+
+                onSettingsRequested: function(workshopId, folderPath) {
+                    settingsPanel.targetWallpaperId   = workshopId
+                    settingsPanel.targetWallpaperPath = folderPath
+                    settingsPanel.open = true
+                }
             }
 
             // Tab 1: Workshop browser
@@ -469,11 +475,20 @@ FloatingWindow {
                 visible: root.activeTab === 1
                 workshopRoot: wallpaperService.workshopRoot
             }
+
+            // Settings panel — floats over everything
+            SettingsPanel {
+                id: settingsPanel
+                onApplyRequested: function(id, path) {
+                    wallpaperService.applyWallpaper(id, path)
+                }
+            }
         }
     }
 
     // ── Initial scan on load ────────────────────────────────────────────
     Component.onCompleted: {
         wallpaperService.scanWallpapers()
+        LweSettingsService.load()
     }
 }

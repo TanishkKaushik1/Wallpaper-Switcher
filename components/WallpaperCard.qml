@@ -14,6 +14,7 @@ Rectangle {
     signal applyRequested(string workshopId, string wallpaperPath)
     signal hideRequested(string workshopId)
     signal deleteRequested(string workshopId, string folderPath)
+    signal settingsRequested(string workshopId, string folderPath)
 
     radius: 10
     color:        cardHover.containsMouse ? "#16191f" : "#12141a"
@@ -188,6 +189,28 @@ Rectangle {
             HoverHandler { id: applyHover }
             TapHandler   { onTapped: card.applyRequested(card.workshopId, card.folderPath) }
         }
+        // ── SETTINGS gear button ───────────────────────────────────────
+Rectangle {
+    anchors.top: parent.top
+    anchors.left: parent.left
+    anchors.margins: 6
+    width: 28; height: 28; radius: 6
+    color: gearHover.containsMouse ? "#1e2a3a" : "#12141a"
+    opacity: cardHover.containsMouse ? 1.0 : 0.0
+    visible: opacity > 0
+    Behavior on opacity { NumberAnimation { duration: 200 } }
+    Behavior on color   { ColorAnimation  { duration: 120 } }
+
+    Text {
+        anchors.centerIn: parent
+        text: "⚙"
+        color: gearHover.containsMouse ? "#1a6aff" : "#5a6a88"
+        font.pixelSize: 14
+        Behavior on color { ColorAnimation { duration: 120 } }
+    }
+    HoverHandler { id: gearHover }
+    TapHandler   { onTapped: card.settingsRequested(card.workshopId, card.folderPath) }
+}
     }
 
     // ── Bottom info strip ──────────────────────────────────────────────────

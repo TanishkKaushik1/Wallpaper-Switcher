@@ -12,6 +12,7 @@ Item {
     property var    model:      null
     property string filterText: ""
     signal applyRequested(string workshopId, string wallpaperPath)
+    signal settingsRequested(string workshopId, string folderPath)
 
     // ── Hidden wallpapers ─────────────────────────────────────────────────
     property var  hiddenIds:      []
@@ -212,6 +213,7 @@ Item {
                     previewPath:   root.filteredItems[index].previewPath
                     folderPath:    root.filteredItems[index].folderPath
                     onApplyRequested:  function(wid, wpath) { root.applyRequested(wid, wpath) }
+                    onSettingsRequested: function(wid, fpath) { root.settingsRequested(wid, fpath) }
                     onHideRequested:   function(wid)        { root.hideWallpaper(wid) }
                     onDeleteRequested: function(wid, fpath) { root.requestDelete(wid, fpath) }
                 }
@@ -344,6 +346,7 @@ Item {
                             previewPath:   hiddenGrid.hiddenItems[index].previewPath
                             folderPath:    hiddenGrid.hiddenItems[index].folderPath
                             onApplyRequested:  function(wid, wpath) { root.applyRequested(wid, wpath) }
+                            onSettingsRequested: function(wid, fpath) { root.settingsRequested(wid, fpath) }
                             onHideRequested:   function(wid) {
                                 var savedY = hiddenGrid.contentY;
                                 var savedGridY = grid.contentY;
