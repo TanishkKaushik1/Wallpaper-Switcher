@@ -43,7 +43,7 @@ Item {
                         workshopId:    r.id            || "",
                         title:         r.title          || "",
                         previewUrl:    r.preview_url    || "",
-                        author:        r.author         || "",
+                        author:        r.author        || "",
                         subscriptions: r.subscriptions  || 0,
                         resolution:    r.resolution     || "",
                         wallpaperType: r.type           || "",
@@ -55,26 +55,6 @@ Item {
             } catch(e) {
                 root.statusMsg = "Parse error: " + e
             }
-        }
-    }
-
-    // ── Download process ───────────────────────────────────────────────────
-    property var _dlProc: Process {
-        id: dlProc
-        property string _buf: ""
-        onStarted: _buf = ""
-        stdout: SplitParser { onRead: function(l) { dlProc._buf += l } }
-        stderr: SplitParser { onRead: function(l) { dlProc._buf += l } }
-        onExited: function() {
-            var out = dlProc._buf.trim()
-            if (out === "already_downloaded")
-                root.statusMsg = "✓ Already in your library"
-            else if (out === "downloading")
-                root.statusMsg = "⬇ Downloading… check Library in a moment"
-            else if (out === "opening_steam")
-                root.statusMsg = "Steam opened → Subscribe → Refresh Library"
-            else
-                root.statusMsg = "⚠ " + out
         }
     }
 
@@ -94,10 +74,11 @@ Item {
 
     function downloadWallpaper(wid) {
         if (wid === "") return
-        dlProc._buf = ""
-        dlProc.command = ["python3", root._scriptDir + "/workshop_download.py", wid, root.workshopRoot]
-        dlProc.running = true
-        statusMsg = "Checking…"
+        
+        // This opens the Steam app natively to the specific workshop item
+        Qt.openUrlExternally("steam://url/CommunityFilePage/" + wid)
+        
+        root.statusMsg = "Steam opened → Subscribe → Refresh Library"
     }
 
     // ── UI ─────────────────────────────────────────────────────────────────
@@ -370,7 +351,7 @@ Item {
                                 }
                             }
 
-                            // ── GET IN STEAM / DOWNLOAD button ─────────────
+                            // ── GET IN STEAM / SUBSCRIBE button ─────────────
                             // Uses a MouseArea so it reliably captures clicks on Wayland
                             Rectangle {
                                 id: dlBtn
@@ -385,8 +366,8 @@ Item {
 
                                 Row {
                                     anchors.centerIn: parent; spacing: 6
-                                    Text { text: "⬇"; color: "#fff"; font.pixelSize: 13; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
-                                    Text { text: "DOWNLOAD"; color: "#fff"; font.pixelSize: 10; font.letterSpacing: 1.2; font.family: "monospace"; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                    Text { text: "↗"; color: "#fff"; font.pixelSize: 13; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
+                                    Text { text: "SUBSCRIBE"; color: "#fff"; font.pixelSize: 10; font.letterSpacing: 1.2; font.family: "monospace"; font.weight: Font.Bold; anchors.verticalCenter: parent.verticalCenter }
                                 }
 
                                 MouseArea {

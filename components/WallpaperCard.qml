@@ -41,6 +41,8 @@ Rectangle {
 
     Menu {
         id: contextMenu
+        width: 140   // <-- FORCE MENU WIDTH
+        
         background: Rectangle {
             color: "#13161e"
             border.color: "#1e2535"
@@ -49,38 +51,69 @@ Rectangle {
         }
 
         MenuItem {
-            text: "Hide"
-            contentItem: Row {
-                spacing: 10
-                Text { text: "◌"; color: "#7a8aaa"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: "Hide"; color: "#c0c8e0"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            id: hideItem
+            width: 140   // <-- FORCE ITEM WIDTH
+            height: 34   // <-- FORCE ITEM HEIGHT
+            
+            contentItem: Item {
+                anchors.fill: parent
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    spacing: 10
+                    Text { text: "◌"; color: "#7a8aaa"; font.pixelSize: 13; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: "Hide"; color: "#c0c8e0"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                }
             }
             background: Rectangle {
-                color: parent.highlighted ? "#1e2535" : "transparent"
+                anchors.fill: parent
+                anchors.margins: 2
+                color: hideItem.highlighted ? "#1e2535" : "transparent"
                 radius: 6
             }
             onTriggered: card.hideRequested(card.workshopId)
         }
 
         MenuSeparator {
-            contentItem: Rectangle { height: 1; color: "#1e2535" }
+            width: 140
+            height: 9
+            contentItem: Item {
+                anchors.fill: parent
+                Rectangle {
+                    width: 136
+                    height: 1
+                    color: "#1e2535"
+                    anchors.centerIn: parent
+                }
+            }
         }
 
         MenuItem {
-            text: "Delete"
-            contentItem: Row {
-                spacing: 10
-                Text { text: "✕"; color: "#ff4444"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
-                Text { text: "Delete from disk"; color: "#ff6666"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+            id: delItem
+            width: 140
+            height: 34
+            
+            contentItem: Item {
+                anchors.fill: parent
+                Row {
+                    anchors.verticalCenter: parent.verticalCenter
+                    anchors.left: parent.left
+                    anchors.leftMargin: 12
+                    spacing: 10
+                    Text { text: "✕"; color: "#ff4444"; font.pixelSize: 11; anchors.verticalCenter: parent.verticalCenter }
+                    Text { text: "Delete"; color: "#ff6666"; font.pixelSize: 12; anchors.verticalCenter: parent.verticalCenter }
+                }
             }
             background: Rectangle {
-                color: parent.highlighted ? "#2a1a1a" : "transparent"
+                anchors.fill: parent
+                anchors.margins: 2
+                color: delItem.highlighted ? "#2a1a1a" : "transparent"
                 radius: 6
             }
             onTriggered: card.deleteRequested(card.workshopId, card.folderPath)
         }
     }
-
     // ── Preview image ──────────────────────────────────────────────────────
     Rectangle {
         id: imgContainer
@@ -155,8 +188,6 @@ Rectangle {
             HoverHandler { id: applyHover }
             TapHandler   { onTapped: card.applyRequested(card.workshopId, card.folderPath) }
         }
-
-    
     }
 
     // ── Bottom info strip ──────────────────────────────────────────────────

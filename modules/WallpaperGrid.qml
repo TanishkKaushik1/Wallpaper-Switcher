@@ -15,8 +15,12 @@ Item {
 
     // ── Hidden wallpapers ─────────────────────────────────────────────────
     property var  hiddenIds:      []
+    property int  hiddenCount:    0       // Reactive count for the UI
     property bool _hiddenUnlocked: false
     readonly property string _hiddenPassword: "1234"   // ← change this
+
+    // ── Persistence State ─────────────────────────────────────────────────
+    property bool _isInitialLoad: true
 
     // ── Filtered proxy ────────────────────────────────────────────────────
     property var filteredItems: []
@@ -44,17 +48,68 @@ Item {
     }
 
     onFilterTextChanged:  rebuildFilter()
-    onHiddenIdsChanged:   rebuildFilter()
+    
+    onHiddenIdsChanged: {
+        hiddenCount = hiddenIds.length
+        rebuildFilter()
+        // Save to disk whenever the list changes (except during initial boot)
+        if (!_isInitialLoad) {
+            saveHiddenIds()
+        }
+    }
+    
     onModelChanged: {
         if (model) model.countChanged.connect(rebuildFilter)
         rebuildFilter()
     }
 
+    // ── Load / Save Processes ──────────────────────────────────────────────
+    property var _loadHiddenProc: Process {
+        id: loadHiddenProc
+        command: ["bash", "-c", "cat ~/.config/niri-rice/hidden_wallpapers.json 2>/dev/null || echo '[]'"]
+        property string _buf: ""
+        onStarted: _buf = ""
+        stdout: SplitParser { onRead: function(l) { loadHiddenProc._buf += l } }
+        onExited: function(code) {
+            try {
+                var parsed = JSON.parse(loadHiddenProc._buf.trim())
+                if (Array.isArray(parsed)) {
+                    root.hiddenIds = parsed
+                }
+            } catch(e) {
+                console.log("Failed to parse hidden wallpapers JSON:", e)
+            }
+            // Mark boot process as complete
+            root._isInitialLoad = false
+        }
+    }
+
+    property var _saveHiddenProc: Process {
+        id: saveHiddenProc
+    }
+
+    function saveHiddenIds() {
+        var jsonStr = JSON.stringify(root.hiddenIds)
+        saveHiddenProc.command = ["bash", "-c", "echo '" + jsonStr + "' > ~/.config/niri-rice/hidden_wallpapers.json"]
+        saveHiddenProc.running = true
+    }
+
+    Component.onCompleted: {
+        // Load the saved list when the grid first initializes
+        loadHiddenProc.running = true
+    }
+
     // ── Public functions (called by WallpaperSwitcherWindow toolbar) ──────
     function hideWallpaper(workshopId) {
+        var savedY = grid.contentY; // Lock scroll position
+        
         var ids = hiddenIds.slice()
         if (ids.indexOf(workshopId) === -1) ids.push(workshopId)
         hiddenIds = ids
+        
+        // Restore scroll position instantly
+        grid.contentY = savedY;
+        Qt.callLater(function() { grid.contentY = savedY; })
     }
 
     function showHidden() {
@@ -82,15 +137,30 @@ Item {
         stderr: SplitParser { onRead: function(line) { console.log("rm err:", line) } }
         onExited: function(code) {
             if (code !== 0) return
+            
+            // Save scroll positions for both grids before modifying models
+            var savedY = grid.contentY;
+            var savedHiddenY = hiddenGrid.contentY;
+
             var ids = root.hiddenIds.filter(function(id) { return id !== root._pendingDeleteId })
             root.hiddenIds = ids
+            
             for (var i = 0; i < root.model.count; i++) {
                 if (root.model.get(i).workshopId === root._pendingDeleteId) {
-                    root.model.remove(i); break
+                    root.model.remove(i);
+                    break
                 }
             }
             root._pendingDeleteId   = ""
             root._pendingDeletePath = ""
+            
+            // Force scroll positions back so it doesn't jump
+            grid.contentY = savedY;
+            hiddenGrid.contentY = savedHiddenY;
+            Qt.callLater(function() { 
+                grid.contentY = savedY; 
+                hiddenGrid.contentY = savedHiddenY;
+            })
         }
     }
 
@@ -128,7 +198,9 @@ Item {
             id: grid
             width: root.width - 40
             cellWidth: 240; cellHeight: 200
+            
             model: root.filteredItems.length
+            currentIndex: -1   // <-- PREVENTS AUTO-SCROLL TO TOP ON FOCUS
 
             delegate: Item {
                 width: grid.cellWidth; height: grid.cellHeight
@@ -147,7 +219,7 @@ Item {
         }
     }
 
-    // ── Hidden wallpapers overlay (replaces Drawer — works in FloatingWindow) ──
+    // ── Hidden wallpapers overlay ──────────────────────────────────────────
     Rectangle {
         id: hiddenOverlay
         anchors.fill: parent
@@ -155,7 +227,6 @@ Item {
         z: 10
         color: "#0f1118"
 
-        // Slide-in animation
         property real _progress: visible ? 1.0 : 0.0
         Behavior on _progress { NumberAnimation { duration: 220; easing.type: Easing.OutCubic } }
         transform: Translate { y: hiddenOverlay.height * (1.0 - hiddenOverlay._progress) }
@@ -231,6 +302,7 @@ Item {
                     id: hiddenGrid
                     width: hiddenOverlay.width - 32
                     cellWidth: 240; cellHeight: 210
+                    currentIndex: -1 // <-- PREVENTS AUTO-SCROLL TO TOP ON FOCUS
 
                     property var hiddenItems: {
                         var arr = []
@@ -273,8 +345,12 @@ Item {
                             folderPath:    hiddenGrid.hiddenItems[index].folderPath
                             onApplyRequested:  function(wid, wpath) { root.applyRequested(wid, wpath) }
                             onHideRequested:   function(wid) {
-                                // Hide from hidden drawer = unhide
+                                var savedY = hiddenGrid.contentY;
+                                var savedGridY = grid.contentY;
                                 root.hiddenIds = root.hiddenIds.filter(function(id) { return id !== wid })
+                                hiddenGrid.contentY = savedY;
+                                grid.contentY = savedGridY;
+                                Qt.callLater(function() { hiddenGrid.contentY = savedY; grid.contentY = savedGridY; })
                             }
                             onDeleteRequested: function(wid, fpath) { root.requestDelete(wid, fpath) }
                         }
@@ -292,8 +368,20 @@ Item {
                             HoverHandler { id: unhideHov }
                             TapHandler {
                                 onTapped: {
+                                    // Save scroll state before removing from hidden list
+                                    var savedY = hiddenGrid.contentY;
+                                    var savedGridY = grid.contentY;
+                                    
                                     var wid = hiddenGrid.hiddenItems[index].workshopId
                                     root.hiddenIds = root.hiddenIds.filter(function(id) { return id !== wid })
+                                    
+                                    // Restore scroll state immediately
+                                    hiddenGrid.contentY = savedY;
+                                    grid.contentY = savedGridY;
+                                    Qt.callLater(function() { 
+                                        hiddenGrid.contentY = savedY; 
+                                        grid.contentY = savedGridY;
+                                    })
                                 }
                             }
                         }
@@ -349,8 +437,7 @@ Item {
                         onTapped: {
                             deleteDialog.close()
                             if (root._pendingDeletePath !== "") {
-                                deleteProc.command = ["bash", "-c",
-                                    "rm -rf \"" + root._pendingDeletePath + "\""]
+                                deleteProc.command = ["bash", "-c", "rm -rf \"" + root._pendingDeletePath + "\""]
                                 deleteProc.running = true
                             }
                         }

@@ -217,19 +217,17 @@ var flags = "--assets-dir \"" + adir + "\" --screen-root " + scr + " --mpv-hwdec
         lsProcess.running = true
     }
 
-    function applyWallpaper(workshopId, wallpaperPath) {
-        console.log("WallpaperService: applyWallpaper called ->", workshopId, wallpaperPath)
+function applyWallpaper(workshopId, wallpaperPath) {
         if (isApplying) return
 
         isApplying = true
         statusMessage = "Applying…"
         currentWallpaper = workshopId
 
-        // Kill any previously running lwe instance first, then launch the new one.
-        // sleep 0.5 gives the GPU/Wayland layer-shell time to release before lwe restarts.
         killProcess._buffer = ""
         killProcess._requestedWallpaperPath = wallpaperPath
-        killProcess.command = ["bash", "-lc", "pkill -f \"[l]inux-wallpaperengine\" 2>/dev/null || true; sleep 1"]
+        // Removed the sleep 1 to make the transition instant
+        killProcess.command = ["bash", "-lc", "pkill -f \"[l]inux-wallpaperengine\" 2>/dev/null || true"]
         killProcess.running = true
     }
 

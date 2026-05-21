@@ -370,7 +370,7 @@ FloatingWindow {
 
                 // Show Hidden button — only on tab 0, only when items are hidden
                 Rectangle {
-                    visible: root.activeTab === 0 && wallpaperGrid.hiddenIds.length > 0
+                    visible: root.activeTab === 0 && wallpaperGrid.hiddenCount > 0
                     width: hiddenBtnRow.width + 20; height: 34
                     radius: 6
                     color: hiddenBtnH.containsMouse ? "#1a1e2a" : "#13151a"
@@ -390,7 +390,7 @@ FloatingWindow {
                             anchors.verticalCenter: parent.verticalCenter
                         }
                         Text {
-                            text: wallpaperGrid.hiddenIds.length + " HIDDEN"
+                            text: wallpaperGrid.hiddenCount + " HIDDEN"
                             color: hiddenBtnH.containsMouse ? "#6a9aff" : "#445566"
                             font.pixelSize: 10
                             font.letterSpacing: 1.5
