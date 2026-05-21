@@ -1,0 +1,10 @@
+{
+  "volume": 100,
+  "mute": true,
+  "scaling": "fill",
+  "fps": 60,
+  "disableMouse": false,
+  "pauseOnFocus": true,
+  "hwdec": "nvdec",
+  "screen": "eDP-1"
+}

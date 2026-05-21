@@ -10,11 +10,11 @@ QtObject {
 
     // ── Settings state ────────────────────────────────────────────────────
     property int    volume:       50      // 0–100   → --volume <n>
-    property bool   mute:         false   //         → --noaudio
+    property bool   mute:         false   //         → --volume 0 --silent
     property string scaling:      "fill"  // fill|fit|stretch|default → --scaling
     property int    fps:          60      // 10–144  → --fps <n>
-    property bool   disableMouse: false   //         → --no-mouse-input
-    property bool   pauseOnFocus: false   //         → --disable-mouse-input
+    property bool   disableMouse: false   //         → --disable-mouse
+    property bool   pauseOnFocus: false   //         → --fullscreen-pause-only-active
     property string hwdec:        "nvdec" // nvdec|auto|no → --mpv-hwdec=
     property string screen:       "eDP-1" //         → --screen-root
 
@@ -35,7 +35,6 @@ QtObject {
         }
         onExited: function(code, _) {
             if (code !== 0 || loadProcess._buffer.trim() === "") {
-                // File doesn't exist yet — defaults are already set above
                 root._loaded = true
                 return
             }
@@ -62,14 +61,11 @@ QtObject {
     }
 
     // ── Public API ────────────────────────────────────────────────────────
-
-    // Call once at startup (e.g. from shell.qml Component.onCompleted)
     function load() {
         loadProcess.command = ["bash", "-c", "cat \"" + settingsFile + "\" 2>/dev/null"]
         loadProcess.running = true
     }
 
-    // Persist current state to lwe_settings.json
     function save() {
         var obj = {
             volume:       root.volume,
@@ -92,7 +88,6 @@ QtObject {
     }
 
     // Returns the full lwe CLI flags string built from current settings.
-    // WallpaperService._killProcess.onExited calls this instead of hardcoding flags.
     function buildFlags(assetsDir, wallpaperPath) {
         var flags = ""
 
@@ -102,16 +97,17 @@ QtObject {
         flags += " --scaling " + root.scaling
         flags += " --fps " + root.fps
 
-        if (!root.mute) {
-            flags += " --volume " + root.volume
+        // FIX: Enforce 0 volume for mute so it fully mutes MPV engine videos
+        if (root.mute || root.volume === 0) {
+            flags += " --volume 0 --silent"
         } else {
-            flags += " --noaudio"
+            flags += " --volume " + root.volume
         }
 
-        if (root.disableMouse) flags += " --no-mouse-input"
-        if (root.pauseOnFocus) flags += " --disable-mouse-input"
+        // FIX: Provide the correct valid engine flags
+        if (root.disableMouse) flags += " --disable-mouse"
+        if (root.pauseOnFocus) flags += " --fullscreen-pause-only-active"
 
-        flags += " --verbose"
         flags += " --bg \"" + wallpaperPath + "\""
 
         return flags

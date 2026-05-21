@@ -20,7 +20,9 @@ Item {
     property string statusMsg:   ""
     property int    currentPage: 1
     property string lastQuery:   ""
-    property string resFilter:   ""   // e.g. "4K", "1080p", ""
+    property string resFilter:   ""          // e.g. "4K", "1080p", ""
+    property string sortBy:      "relevance" // "relevance", "recent", "popular", "trend"
+    property bool   allowNsfw:   false       // Toggle for adult content
 
     // ── Search process ─────────────────────────────────────────────────────
     property var _searchProc: Process {
@@ -66,8 +68,10 @@ Item {
         currentPage = page
         statusMsg  = "Searching…"
         results    = []
-        var args = ["python3", root._scriptDir + "/workshop_search.py", query, String(page)]
-        if (root.resFilter !== "") args.push(root.resFilter)
+        
+        // Pass positional arguments to the python script: query, page, res_filter, sort_by, allow_nsfw
+        var args = ["python3", root._scriptDir + "/workshop_search.py", query, String(page), root.resFilter, root.sortBy, root.allowNsfw ? "true" : "false"]
+        
         searchProc.command = args
         searchProc.running = true
     }
@@ -185,44 +189,140 @@ Item {
             }
         }
 
-        // ── Resolution filter ──────────────────────────────────────────────
+        // ── Filters Row (RES + SORT + SAFE MODE) ───────────────────────────
         RowLayout {
             Layout.fillWidth: true
-            spacing: 6
+            spacing: 20
 
-            Text {
-                text: "RES"
-                color: "#2a3448"
-                font.pixelSize: 9
-                font.family: "monospace"
-                font.letterSpacing: 1.5
-                Layout.alignment: Qt.AlignVCenter
+            // -- Resolution filter --
+            Row {
+                spacing: 6
+                Text {
+                    text: "RES"
+                    color: "#2a3448"
+                    font.pixelSize: 9
+                    font.family: "monospace"
+                    font.letterSpacing: 1.5
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Repeater {
+                    model: ["", "4K", "1080p", "1440p", "ultrawide"]
+                    delegate: Rectangle {
+                        height: 22; width: resLbl.width + 14; radius: 11
+                        color: root.resFilter === modelData
+                               ? "#1a3a6a"
+                               : (resH.containsMouse ? "#151f30" : "#0a0f1a")
+                        border.color: root.resFilter === modelData ? "#2a6aff"
+                                      : (resH.containsMouse ? "#1a3050" : "#141a24")
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: 100 } }
+                        Behavior on border.color { ColorAnimation { duration: 100 } }
+                        Text {
+                            id: resLbl; anchors.centerIn: parent
+                            text: modelData === "" ? "ALL" : modelData
+                            color: root.resFilter === modelData ? "#6aaaff"
+                                   : (resH.containsMouse ? "#4a6a90" : "#2a3a50")
+                            font.pixelSize: 9; font.family: "monospace"; font.letterSpacing: 1
+                            Behavior on color { ColorAnimation { duration: 100 } }
+                        }
+                        HoverHandler { id: resH }
+                        TapHandler {
+                            onTapped: {
+                                root.resFilter = modelData
+                                if (root.lastQuery !== "") root.doSearch(root.lastQuery, 1)
+                            }
+                        }
+                    }
+                }
             }
 
-            Repeater {
-                model: ["", "4K", "1080p", "1440p", "ultrawide"]
-                delegate: Rectangle {
-                    height: 22; width: resLbl.width + 14; radius: 11
-                    color: root.resFilter === modelData
-                           ? "#1a3a6a"
-                           : (resH.containsMouse ? "#151f30" : "#0a0f1a")
-                    border.color: root.resFilter === modelData ? "#2a6aff"
-                                  : (resH.containsMouse ? "#1a3050" : "#141a24")
-                    border.width: 1
-                    Behavior on color        { ColorAnimation { duration: 100 } }
-                    Behavior on border.color { ColorAnimation { duration: 100 } }
-                    Text {
-                        id: resLbl; anchors.centerIn: parent
-                        text: modelData === "" ? "ALL" : modelData
-                        color: root.resFilter === modelData ? "#6aaaff"
-                               : (resH.containsMouse ? "#4a6a90" : "#2a3a50")
-                        font.pixelSize: 9; font.family: "monospace"; font.letterSpacing: 1
-                        Behavior on color { ColorAnimation { duration: 100 } }
+            // -- Sort filter --
+            Row {
+                spacing: 6
+                Text {
+                    text: "SORT"
+                    color: "#2a3448"
+                    font.pixelSize: 9
+                    font.family: "monospace"
+                    font.letterSpacing: 1.5
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Repeater {
+                    model: [
+                        { label: "RELEVANCE", val: "relevance" },
+                        { label: "POPULAR", val: "popular" },
+                        { label: "TRENDING", val: "trend" },
+                        { label: "RECENT", val: "recent" }
+                    ]
+                    delegate: Rectangle {
+                        height: 22; width: sortLbl.width + 14; radius: 11
+                        color: root.sortBy === modelData.val
+                               ? "#1a3a6a"
+                               : (sortH.containsMouse ? "#151f30" : "#0a0f1a")
+                        border.color: root.sortBy === modelData.val ? "#2a6aff"
+                                      : (sortH.containsMouse ? "#1a3050" : "#141a24")
+                        border.width: 1
+                        Behavior on color        { ColorAnimation { duration: 100 } }
+                        Behavior on border.color { ColorAnimation { duration: 100 } }
+                        Text {
+                            id: sortLbl; anchors.centerIn: parent
+                            text: modelData.label
+                            color: root.sortBy === modelData.val ? "#6aaaff"
+                                   : (sortH.containsMouse ? "#4a6a90" : "#2a3a50")
+                            font.pixelSize: 9; font.family: "monospace"; font.letterSpacing: 1
+                            Behavior on color { ColorAnimation { duration: 100 } }
+                        }
+                        HoverHandler { id: sortH }
+                        TapHandler {
+                            onTapped: {
+                                root.sortBy = modelData.val
+                                if (root.lastQuery !== "") root.doSearch(root.lastQuery, 1)
+                            }
+                        }
                     }
-                    HoverHandler { id: resH }
-                    TapHandler {
-                        onTapped: {
-                            root.resFilter = modelData
+                }
+            }
+
+            // -- Spacer to push toggle to the right --
+            Item { Layout.fillWidth: true }
+
+            // -- Safe Search Toggle --
+            Row {
+                spacing: 8
+                Text {
+                    text: "SAFE MODE"
+                    color: "#2a3448"
+                    font.pixelSize: 9
+                    font.family: "monospace"
+                    font.letterSpacing: 1.5
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+                
+                Rectangle {
+                    width: 32; height: 18; radius: 9
+                    color: !root.allowNsfw ? "#18aa66" : "#1a2a4a"
+                    border.color: !root.allowNsfw ? "#22cc77" : "#1a3050"
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    Behavior on color { ColorAnimation { duration: 150 } }
+                    Behavior on border.color { ColorAnimation { duration: 150 } }
+                    
+                    Rectangle {
+                        width: 12; height: 12; radius: 6
+                        anchors.verticalCenter: parent.verticalCenter
+                        x: !root.allowNsfw ? parent.width - width - 3 : 3
+                        color: "#ffffff"
+                        Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                    }
+                    
+                    MouseArea {
+                        anchors.fill: parent
+                        hoverEnabled: true
+                        cursorShape: Qt.PointingHandCursor
+                        onClicked: {
+                            root.allowNsfw = !root.allowNsfw
                             if (root.lastQuery !== "") root.doSearch(root.lastQuery, 1)
                         }
                     }
@@ -437,10 +537,62 @@ Item {
                 TapHandler { onTapped: if (root.currentPage > 1) root.doSearch(root.lastQuery, root.currentPage - 1) }
             }
 
-            Text {
+            // ── Jump to Page Input ──
+            Row {
                 anchors.verticalCenter: parent.verticalCenter
-                text: "PAGE " + root.currentPage
-                color: "#2a3a50"; font.pixelSize: 10; font.family: "monospace"; font.letterSpacing: 1.5
+                spacing: 6
+
+                Text {
+                    text: "PAGE"
+                    color: "#2a3a50"
+                    font.pixelSize: 10; font.family: "monospace"; font.letterSpacing: 1.5
+                    anchors.verticalCenter: parent.verticalCenter
+                }
+
+                Rectangle {
+                    width: 40; height: 24; radius: 4
+                    color: pageInput.activeFocus ? "#131926" : "#0a0d14"
+                    border.color: pageInput.activeFocus ? "#2a6aff" : "#1e3a5a"
+                    border.width: 1
+                    anchors.verticalCenter: parent.verticalCenter
+                    Behavior on color { ColorAnimation { duration: 120 } }
+                    Behavior on border.color { ColorAnimation { duration: 120 } }
+
+                    TextInput {
+                        id: pageInput
+                        anchors.fill: parent
+                        horizontalAlignment: Text.AlignHCenter
+                        verticalAlignment: Text.AlignVCenter
+                        color: "#6a9aff"
+                        font.pixelSize: 11; font.family: "monospace"
+                        selectionColor: "#2a6aff"
+                        selectedTextColor: "#ffffff"
+                        selectByMouse: true
+                        validator: IntValidator { bottom: 1; top: 9999 } // Only allow numbers
+                        
+                        // Set initial value
+                        Component.onCompleted: text = root.currentPage.toString()
+
+                        // Keep input synced if user clicks PREV/NEXT
+                        Connections {
+                            target: root
+                            function onCurrentPageChanged() {
+                                pageInput.text = root.currentPage.toString()
+                            }
+                        }
+
+                        // Trigger search when Enter is pressed
+                        onAccepted: {
+                            var p = parseInt(text)
+                            if (!isNaN(p) && p > 0 && p !== root.currentPage) {
+                                root.doSearch(root.lastQuery, p)
+                            } else {
+                                text = root.currentPage.toString() // Revert if invalid
+                            }
+                            focus = false
+                        }
+                    }
+                }
             }
 
             Rectangle {

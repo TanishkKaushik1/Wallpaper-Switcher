@@ -71,19 +71,36 @@ QtObject {
                 try {
                     var json    = JSON.parse(catProcess._buffer)
                     var title   = json.title   || ("Workshop " + id)
-                    var preview = json.preview  || ""
-                    var type    = json.type     || "unknown"
+                    var preview = json.preview || ""
+                    var type    = json.type    || "unknown"
+                    
+                    // -- NSFW Checking --
+                    var contentrating = json.contentrating || ""
+                    var tags = json.tags || []
+                    var isNsfw = (contentrating.toLowerCase() === "mature" || contentrating.toLowerCase() === "questionable")
+                    
+                    if (!isNsfw && Array.isArray(tags)) {
+                        for (var j = 0; j < tags.length; j++) {
+                            var t = String(tags[j]).toLowerCase()
+                            if (t === "mature" || t === "nsfw" || t === "questionable") {
+                                isNsfw = true
+                                break
+                            }
+                        }
+                    }
+
                     root.wallpapers.append({
                         workshopId:    id,
                         title:         title,
                         wallpaperType: type,
                         previewPath:   preview !== "" ? (path + "/" + preview) : "",
-                        folderPath:    path
+                        folderPath:    path,
+                        isNsfw:        isNsfw
                     })
                 } catch (e) {
                     root.wallpapers.append({
                         workshopId: id, title: "Workshop " + id,
-                        wallpaperType: "unknown", previewPath: "", folderPath: path
+                        wallpaperType: "unknown", previewPath: "", folderPath: path, isNsfw: false
                     })
                 }
             }
@@ -144,10 +161,10 @@ QtObject {
             var adir = root.assetsDir
             var lwe  = root.lweBinary
 
-            if (!wp)  wp  = ""
+            if (!wp)  wp = ""
             if (!scr) scr = "eDP-1"
 
-var flags = LweSettingsService.buildFlags(adir, wp)
+            var flags = LweSettingsService.buildFlags(adir, wp)
 
             var cmd = "if [ ! -x \"" + lwe + "\" ] && ! command -v linux-wallpaperengine >/dev/null 2>&1; then\n"
                     + "  echo 'lwe-missing'; exit 2\n"

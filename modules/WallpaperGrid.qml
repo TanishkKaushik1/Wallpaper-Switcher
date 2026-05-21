@@ -11,6 +11,8 @@ Item {
     // ── Public ───────────────────────────────────────────────────────────
     property var    model:      null
     property string filterText: ""
+    property bool   safeMode:   true    // Auto-hide NSFW content by default
+
     signal applyRequested(string workshopId, string wallpaperPath)
     signal settingsRequested(string workshopId, string folderPath)
 
@@ -18,6 +20,7 @@ Item {
     property var  hiddenIds:      []
     property int  hiddenCount:    0       // Reactive count for the UI
     property bool _hiddenUnlocked: false
+    property string _unlockTarget: "hidden" // "hidden" or "safemode"
     readonly property string _hiddenPassword: "1234"   // ← change this
 
     // ── Persistence State ─────────────────────────────────────────────────
@@ -32,7 +35,14 @@ Item {
         var arr = []
         for (var i = 0; i < model.count; i++) {
             var item = model.get(i)
+            
+            // Skip manually hidden items
             if (hiddenIds.indexOf(item.workshopId) !== -1) continue
+            
+            // Skip adult content if Safe Mode is ON
+            var isNsfw = item.isNsfw !== undefined ? item.isNsfw : false
+            if (safeMode && isNsfw) continue
+
             if (ft === "" ||
                 item.title.toLowerCase().indexOf(ft) !== -1 ||
                 item.workshopId.indexOf(ft) !== -1) {
@@ -41,7 +51,8 @@ Item {
                     title:         item.title,
                     wallpaperType: item.wallpaperType,
                     previewPath:   item.previewPath,
-                    folderPath:    item.folderPath
+                    folderPath:    item.folderPath,
+                    isNsfw:        isNsfw
                 })
             }
         }
@@ -49,6 +60,7 @@ Item {
     }
 
     onFilterTextChanged:  rebuildFilter()
+    onSafeModeChanged:    rebuildFilter()
     
     onHiddenIdsChanged: {
         hiddenCount = hiddenIds.length
@@ -117,6 +129,7 @@ Item {
         if (_hiddenUnlocked) {
             hiddenOverlay.visible = true
         } else {
+            root._unlockTarget = "hidden"
             passwordPrompt.open()
         }
     }
@@ -162,6 +175,55 @@ Item {
                 grid.contentY = savedY; 
                 hiddenGrid.contentY = savedHiddenY;
             })
+        }
+    }
+
+    // ── Safe Mode Floating Toggle ──────────────────────────────────────────
+    Rectangle {
+        anchors.top: parent.top
+        anchors.right: parent.right
+        anchors.margins: 12
+        width: 104; height: 28; radius: 14
+        color: root.safeMode ? "#1a2a4a" : "#2a1a1a"
+        border.color: root.safeMode ? "#2a6aff" : "#ff4444"
+        border.width: 1
+        z: 5
+        visible: !hiddenOverlay.visible // hide when showing manual hidden grid
+
+        Row {
+            anchors.centerIn: parent
+            spacing: 6
+            Text {
+                text: root.safeMode ? "SAFE: ON" : "SAFE: OFF"
+                color: root.safeMode ? "#6a9aff" : "#ff6666"
+                font.pixelSize: 9; font.family: "monospace"; font.weight: Font.Bold
+                anchors.verticalCenter: parent.verticalCenter
+            }
+            Rectangle {
+                width: 24; height: 12; radius: 6
+                color: root.safeMode ? "#2a6aff" : "#ff4444"
+                anchors.verticalCenter: parent.verticalCenter
+                Rectangle {
+                    width: 8; height: 8; radius: 4; color: "#fff"
+                    anchors.verticalCenter: parent.verticalCenter
+                    x: root.safeMode ? parent.width - width - 2 : 2
+                    Behavior on x { NumberAnimation { duration: 150; easing.type: Easing.OutCubic } }
+                }
+            }
+        }
+
+        MouseArea {
+            anchors.fill: parent
+            hoverEnabled: true
+            cursorShape: Qt.PointingHandCursor
+            onClicked: {
+                if (root.safeMode) {
+                    root._unlockTarget = "safemode"
+                    passwordPrompt.open()
+                } else {
+                    root.safeMode = true
+                }
+            }
         }
     }
 
@@ -214,7 +276,7 @@ Item {
                     folderPath:    root.filteredItems[index].folderPath
                     onApplyRequested:  function(wid, wpath) { root.applyRequested(wid, wpath) }
                     onSettingsRequested: function(wid, fpath) { root.settingsRequested(wid, fpath) }
-                    onHideRequested:   function(wid)        { root.hideWallpaper(wid) }
+                    onHideRequested:   function(wid) { root.hideWallpaper(wid) }
                     onDeleteRequested: function(wid, fpath) { root.requestDelete(wid, fpath) }
                 }
             }
@@ -466,7 +528,7 @@ Item {
         Column {
             width: parent.width; spacing: 14; padding: 8
 
-            Text { text: "🔒  Hidden Wallpapers"
+            Text { text: root._unlockTarget === "safemode" ? "🔒 Disable Safe Mode" : "🔒 Hidden Wallpapers"
                    color: "#a0b0d0"; font.pixelSize: 14; font.weight: Font.Bold
                    anchors.horizontalCenter: parent.horizontalCenter }
             Text { text: "Enter password to view"
@@ -521,8 +583,13 @@ Item {
                 pwField.text = ""
                 pwError.visible = false
                 passwordPrompt.close()
-                root._hiddenUnlocked = true
-                hiddenOverlay.visible = true
+                
+                if (root._unlockTarget === "hidden") {
+                    root._hiddenUnlocked = true
+                    hiddenOverlay.visible = true
+                } else if (root._unlockTarget === "safemode") {
+                    root.safeMode = false
+                }
             } else {
                 pwError.visible = true
                 pwField.selectAll()
